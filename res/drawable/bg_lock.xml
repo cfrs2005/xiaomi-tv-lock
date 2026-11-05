@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  锁屏背景：深夜的客厅。
+  纯 drawable 合成，不依赖任何位图 —— APK 体积不变，任何分辨率下都不糊。
+  中央留空，因为锁面板压在上面；光晕都推向四角。
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 底色：深蓝到暖紫，模拟关灯后窗外透进来的一点光 -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:startColor="@color/bg_top"
+                android:centerColor="@color/bg_mid"
+                android:endColor="@color/bg_bottom"
+                android:type="linear" />
+        </shape>
+    </item>
+
+    <!-- 右上角冷光晕 -->
+    <item
+        android:width="620dp"
+        android:height="620dp"
+        android:gravity="top|right">
+        <shape android:shape="oval">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="310dp"
+                android:startColor="#336BB8FF"
+                android:endColor="#006BB8FF" />
+        </shape>
+    </item>
+
+    <!-- 左下角暖光晕，像床头灯 -->
+    <item
+        android:width="720dp"
+        android:height="720dp"
+        android:gravity="bottom|left">
+        <shape android:shape="oval">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="360dp"
+                android:startColor="#40FF9E6B"
+                android:endColor="#00FF9E6B" />
+        </shape>
+    </item>
+
+    <!-- 右下角一点点玫红，避免整屏发灰 -->
+    <item
+        android:width="420dp"
+        android:height="420dp"
+        android:gravity="bottom|right">
+        <shape android:shape="oval">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="210dp"
+                android:startColor="#2EE07AA8"
+                android:endColor="#00E07AA8" />
+        </shape>
+    </item>
+
+    <!-- 几颗疏落的星，缩到很小当光点；电视观看距离下只是点缀 -->
+    <item android:width="6dp" android:height="6dp" android:gravity="top|left" android:left="180dp" android:top="96dp">
+        <shape android:shape="oval">
+            <solid android:color="#66FFFFFF" />
+        </shape>
+    </item>
+    <item android:width="4dp" android:height="4dp" android:gravity="top|left" android:left="300dp" android:top="168dp">
+        <shape android:shape="oval">
+            <solid android:color="#4DFFFFFF" />
+        </shape>
+    </item>
+    <item android:width="5dp" android:height="5dp" android:gravity="top|left" android:left="120dp" android:top="260dp">
+        <shape android:shape="oval">
+            <solid android:color="#3DFFFFFF" />
+        </shape>
+    </item>
+    <item android:width="4dp" android:height="4dp" android:gravity="top|right" android:right="220dp" android:top="140dp">
+        <shape android:shape="oval">
+            <solid android:color="#47FFFFFF" />
+        </shape>
+    </item>
+    <item android:width="6dp" android:height="6dp" android:gravity="top|right" android:right="120dp" android:top="300dp">
+        <shape android:shape="oval">
+            <solid android:color="#59FFFFFF" />
+        </shape>
+    </item>
+</layer-list>

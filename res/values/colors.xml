@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 背景：深夜客厅的冷暖过渡 -->
+    <color name="bg_top">#0A1020</color>
+    <color name="bg_mid">#141B2E</color>
+    <color name="bg_bottom">#241A22</color>
+
+    <!-- 玻璃面板 -->
+    <color name="panel_fill">#590C1220</color>
+    <color name="panel_stroke">#26FFFFFF</color>
+
+    <!-- 文案 -->
+    <color name="text_hero">#FFF7F0</color>
+    <color name="text_sub">#C9D6EA</color>
+    <color name="text_muted">#8FA0BC</color>
+    <color name="text_signature">#FFB37A</color>
+
+    <!-- 状态反馈 -->
+    <color name="state_ok">#7CE38B</color>
+    <color name="state_err">#FF8A8A</color>
+
+    <!-- 按键 -->
+    <color name="key_fill">#1FFFFFFF</color>
+    <color name="key_stroke">#1AFFFFFF</color>
+    <color name="key_focus_fill">#FFE3B47A</color>
+    <color name="key_focus_stroke">#FFFFD9A0</color>
+    <color name="key_focus_text">#2B1B0E</color>
+    <color name="key_text_normal">#FFF2F6FF</color>
+
+    <!-- 密码圆点 -->
+    <color name="dot_on">#FFF6D9A8</color>
+    <color name="dot_off_stroke">#59FFFFFF</color>
+</resources>

@@ -89,8 +89,12 @@ status() {
   echo -n "悬浮窗: "
   $ADB shell appops get "$PKG" SYSTEM_ALERT_WINDOW 2>&1 | tr -d '\r' | head -1
   echo -n "通知监听: "
-  $ADB shell settings get secure enabled_notification_listeners 2>/dev/null \
-    | tr -d '\r' | tr ':' '\n' | grep -c "$PKG" | sed 's/^/命中 /'
+  if $ADB shell settings get secure enabled_notification_listeners 2>/dev/null \
+      | tr -d '\r' | tr ':' '\n' | grep -q "$PKG"; then
+    echo "已授权"
+  else
+    echo "未授权 —— 待机后将不会重新上锁"
+  fi
 
   echo
   echo "=== 锁定状态（来自应用自身的诊断输出）==="
@@ -113,8 +117,23 @@ arm() {
   echo
   echo "=== 复核 ==="
   $ADB shell appops get "$PKG" SYSTEM_ALERT_WINDOW | tr -d '\r'
-  $ADB shell settings get secure enabled_notification_listeners | tr -d '\r' | tr ':' '\n' | grep "$PKG"
-  echo "通知监听未出现在上面时，授权失败，请勿认为已生效。"
+  # The settings write lands a moment after allow_listener returns; read it a few times before
+  # declaring failure, otherwise a working grant looks like a broken one.
+  local ok=0
+  for _ in 1 2 3 4 5; do
+    if $ADB shell settings get secure enabled_notification_listeners 2>/dev/null \
+        | tr -d '\r' | tr ':' '\n' | grep -q "$PKG"; then
+      ok=1
+      break
+    fi
+    sleep 0.4
+  done
+  if [ "$ok" = "1" ]; then
+    echo "通知监听: 已授权"
+    $ADB shell settings get secure enabled_notification_listeners | tr -d '\r'
+  else
+    echo "通知监听: 未授权 —— 授权失败，请勿认为已生效。"
+  fi
 }
 
 disable() {

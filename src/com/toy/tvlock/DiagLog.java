@@ -21,11 +21,15 @@ public final class DiagLog {
     private static final ArrayDeque<String> LINES = new ArrayDeque<>(CAPACITY);
     private static long sStartElapsed = SystemClock.elapsedRealtime();
     private static long sStartWall = System.currentTimeMillis();
+    private static boolean sInitialized;
 
     private DiagLog() {
     }
 
+    /** Once per process: both the listener and the coordinator call this on their way in. */
     public static void init(Context context) {
+        if (sInitialized) return;
+        sInitialized = true;
         // Process start, not app start: this tells a fresh process from a revived one.
         sStartElapsed = SystemClock.elapsedRealtime();
         sStartWall = System.currentTimeMillis();

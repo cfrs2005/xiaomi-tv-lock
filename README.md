@@ -1,9 +1,10 @@
 # TV Lock — 小米电视整机访问门禁
 
-> **状态：代码已重写，真机未验证。**
-> 待机唤醒锁定由「通知监听复活锚点」承担，架构上已经能覆盖厂商 force-stop；但这一条
-> **只在本机以外同型号固件上被独立验证过**，本机（OS3.0.106）尚未上机。测试矩阵见
-> [`docs/TEST-PLAN.md`](docs/TEST-PLAN.md)，T 系列全部 NOT RUN。
+> **状态：真机第一轮通过，仍有未测项。**
+> 在 MiTV-MFTR0 / `OS3.0.106.0.UFTMATV` 上已验证：锁覆盖 PatchWall、待机唤醒后要求 PIN、
+> 强停后 1 秒内复活并重新上锁、正确 PIN 解锁。仍未验证：唤醒首帧是否零闪烁（T29）、
+> 实体遥控器的 HOME/返回/最近任务、连续输错退避、冷启动。逐项状态见
+> [`docs/TEST-PLAN.md`](docs/TEST-PLAN.md)，PASS 只认真机证据。
 
 针对 **Xiaomi TV S55 Mini LED / MiTV-MFTR0 / HyperOS TV 3 / Android 14** 的整机访问门禁：
 每次冷启动、每次待机唤醒都要输入 4 位 PIN，未解锁不能通过 HOME、返回、最近任务、语音助手
@@ -106,7 +107,10 @@ AndroidManifest.xml              组件与权限（2 项权限，通知监听受
 build.sh                         手工构建 + 产物断言
 test.sh                          离机测试
 tools/tvlockctl.sh               部署 / 诊断 / 解除保护（默认只读）
-res/layout/lock_overlay.xml      锁屏界面：标题 + 圆点 + 3×4 键盘
+design/tv-lock-screen/           锁屏设计记录、token 映射、真机截图
+res/layout/lock_overlay.xml      锁屏界面：文案 + 密码圆点 + 3×4 键盘
+res/drawable/bg_lock.xml         背景（渐变 + 光晕 + 星点，纯 drawable 合成）
+res/values/colors.xml            配色 token
 src/com/toy/tvlock/
   RevivalListener.java           复活锚点（通知监听）
   LockCoordinator.java           状态 + 窗口协调

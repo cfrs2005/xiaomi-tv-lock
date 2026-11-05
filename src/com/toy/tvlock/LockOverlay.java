@@ -1,7 +1,6 @@
 package com.toy.tvlock;
 
 import android.content.Context;
-import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.os.Build;
 import android.os.Handler;
@@ -46,21 +45,20 @@ final class LockOverlay {
         void onCancelRequested();
     }
 
-    private static final int COLOR_TEXT = Color.WHITE;
-    private static final int COLOR_HINT = Color.parseColor("#AAAAAA");
-    private static final int COLOR_OK = Color.parseColor("#4CAF50");
-    private static final int COLOR_ERR = Color.parseColor("#FF6B6B");
-
     private final Context context;
     private final Listener listener;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final StringBuilder input = new StringBuilder();
+    /** Resolved once: the layout owns the palette, the code only switches between three states. */
+    private final int colorHint;
+    private final int colorOk;
+    private final int colorErr;
 
     private WindowManager windowManager;
     private View root;
     private TextView title;
     private TextView hint;
-    private TextView[] dots;
+    private View[] dots;
     private boolean attached;
 
     private int mode = MODE_UNLOCK;
@@ -70,6 +68,9 @@ final class LockOverlay {
     LockOverlay(Context context, Listener listener) {
         this.context = context;
         this.listener = listener;
+        this.colorHint = context.getColor(R.color.text_muted);
+        this.colorOk = context.getColor(R.color.state_ok);
+        this.colorErr = context.getColor(R.color.state_err);
     }
 
     void setMode(int mode) {
@@ -132,11 +133,11 @@ final class LockOverlay {
 
         title = (TextView) root.findViewById(R.id.title);
         hint = (TextView) root.findViewById(R.id.hint);
-        dots = new TextView[]{
-                (TextView) root.findViewById(R.id.dot0),
-                (TextView) root.findViewById(R.id.dot1),
-                (TextView) root.findViewById(R.id.dot2),
-                (TextView) root.findViewById(R.id.dot3)
+        dots = new View[]{
+                root.findViewById(R.id.dot0),
+                root.findViewById(R.id.dot1),
+                root.findViewById(R.id.dot2),
+                root.findViewById(R.id.dot3)
         };
 
         bind(R.id.btn0, '0');
@@ -236,7 +237,7 @@ final class LockOverlay {
         int result = PinManager.verify(context, entered);
         switch (result) {
             case PinManager.OK:
-                flash(COLOR_OK, "已解锁");
+                flash(colorOk, "已解锁");
                 resetInput();
                 handler.postDelayed(new Runnable() {
                     @Override
@@ -258,7 +259,7 @@ final class LockOverlay {
                 break;
             case PinManager.ERROR:
                 resetInput();
-                flash(COLOR_ERR, "校验失败，请重试");
+                flash(colorErr, "校验失败，请重试");
                 break;
             case PinManager.WRONG:
             default:
@@ -266,7 +267,7 @@ final class LockOverlay {
                 int fails = PinManager.failedAttempts(context);
                 int free = BackoffPolicy.freeAttemptsLeft(fails);
                 if (free > 0) {
-                    flash(COLOR_ERR, "密码错误，还可尝试 " + free + " 次");
+                    flash(colorErr, "密码错误，还可尝试 " + free + " 次");
                 } else {
                     showThrottled();
                 }
@@ -279,7 +280,7 @@ final class LockOverlay {
             pending = entered;
             step = 1;
             resetInput();
-            hint.setTextColor(COLOR_HINT);
+            hint.setTextColor(colorHint);
             hint.setText("请再次输入同一密码");
             return;
         }
@@ -291,13 +292,13 @@ final class LockOverlay {
                 pending = null;
                 step = 0;
                 resetInput();
-                flash(COLOR_ERR, "设置失败，请重试");
+                flash(colorErr, "设置失败，请重试");
                 return;
             }
             pending = null;
             step = 0;
             resetInput();
-            flash(COLOR_OK, "密码已设置");
+            flash(colorOk, "密码已设置");
             handler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
@@ -308,7 +309,7 @@ final class LockOverlay {
             pending = null;
             step = 0;
             resetInput();
-            flash(COLOR_ERR, "两次不一致，请重新设置");
+            flash(colorErr, "两次不一致，请重新设置");
         }
     }
 
@@ -317,13 +318,13 @@ final class LockOverlay {
             if (PinManager.verify(context, entered) == PinManager.OK) {
                 step = 1;
                 resetInput();
-                hint.setTextColor(COLOR_HINT);
+                hint.setTextColor(colorHint);
                 hint.setText("请输入新密码");
             } else {
                 resetInput();
                 int fails = PinManager.failedAttempts(context);
                 int free = BackoffPolicy.freeAttemptsLeft(fails);
-                flash(COLOR_ERR, free > 0
+                flash(colorErr, free > 0
                         ? "原密码错误，还可尝试 " + free + " 次"
                         : "尝试过多，请稍后再试");
             }
@@ -333,7 +334,7 @@ final class LockOverlay {
             pending = entered;
             step = 2;
             resetInput();
-            hint.setTextColor(COLOR_HINT);
+            hint.setTextColor(colorHint);
             hint.setText("请再次输入新密码");
             return;
         }
@@ -345,13 +346,13 @@ final class LockOverlay {
                 pending = null;
                 step = 1;
                 resetInput();
-                flash(COLOR_ERR, "设置失败，请重试");
+                flash(colorErr, "设置失败，请重试");
                 return;
             }
             pending = null;
             step = 0;
             resetInput();
-            flash(COLOR_OK, "密码已更新");
+            flash(colorOk, "密码已更新");
             handler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
@@ -362,26 +363,29 @@ final class LockOverlay {
             pending = null;
             step = 1;
             resetInput();
-            flash(COLOR_ERR, "两次不一致，请重新输入新密码");
+            flash(colorErr, "两次不一致，请重新输入新密码");
         }
     }
 
     private void applyModeText() {
         if (!attached || title == null || hint == null) return;
-        title.setTextColor(COLOR_TEXT);
-        hint.setTextColor(COLOR_HINT);
+        // The hero line above owns the attention; this row stays muted on purpose.
+        title.setTextColor(colorHint);
+        hint.setTextColor(colorHint);
         switch (mode) {
             case MODE_SETUP:
-                title.setText("设置电视锁密码");
-                hint.setText("首次使用，请设置 4 位数字密码");
+                title.setText("第一次使用");
+                hint.setText("设一个 4 位密码，需要输入两次");
                 break;
             case MODE_CHANGE:
                 title.setText("修改密码");
-                hint.setText(step == 0 ? "请输入当前密码（返回键取消）" : "请输入新密码（返回键取消）");
+                hint.setText(step == 0
+                        ? "先输入当前密码（返回键取消）"
+                        : "输入新密码（返回键取消）");
                 break;
             case MODE_UNLOCK:
             default:
-                title.setText("电视锁");
+                title.setText("欢迎回家");
                 long wait = PinManager.millisUntilNextAttempt(context);
                 if (wait > 0) {
                     showThrottled();
@@ -390,7 +394,7 @@ final class LockOverlay {
                     step = 0;
                     applyModeText();
                 } else {
-                    hint.setText("请输入 4 位密码解锁");
+                    hint.setText("输入 4 位密码");
                 }
                 break;
         }
@@ -399,12 +403,12 @@ final class LockOverlay {
     private void showThrottled() {
         long wait = PinManager.millisUntilNextAttempt(context);
         if (wait <= 0) {
-            hint.setTextColor(COLOR_HINT);
+            hint.setTextColor(colorHint);
             hint.setText("请输入 4 位密码解锁");
             return;
         }
         long seconds = Math.max(1, (wait + 999) / 1000);
-        hint.setTextColor(COLOR_ERR);
+        hint.setTextColor(colorErr);
         hint.setText("尝试过多，请等待 " + seconds + " 秒");
         handler.postDelayed(new Runnable() {
             @Override
@@ -428,7 +432,8 @@ final class LockOverlay {
         if (dots == null) return;
         for (int i = 0; i < dots.length; i++) {
             if (dots[i] == null) continue;
-            dots[i].setText(i < input.length() ? "●" : "○");
+            dots[i].setBackgroundResource(
+                    i < input.length() ? R.drawable.dot_on : R.drawable.dot_off);
         }
     }
 }

@@ -1,13 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!--
+      遥控器按键。尺寸按 3 米观看距离定：单键 96x56dp，在 1920x1080 / 320dpi 下约 192x112px。
+      焦点态由 @drawable/btn_bg 负责填充，文字颜色由 @color/key_text 跟随焦点反转。
+    -->
     <style name="KeyBtn">
-        <item name="android:layout_width">84dp</item>
-        <item name="android:layout_height">72dp</item>
-        <item name="android:layout_margin">8dp</item>
-        <item name="android:textSize">28sp</item>
-        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:layout_width">96dp</item>
+        <item name="android:layout_height">50dp</item>
+        <item name="android:layout_margin">5dp</item>
+        <item name="android:textSize">22sp</item>
+        <item name="android:textColor">@color/key_text</item>
         <item name="android:background">@drawable/btn_bg</item>
         <item name="android:focusable">true</item>
         <item name="android:focusableInTouchMode">true</item>
+        <item name="android:gravity">center</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <!-- 功能键（清空 / 删除）：同尺寸，字小一号 -->
+    <style name="KeyBtnFunc" parent="KeyBtn">
+        <item name="android:textSize">17sp</item>
     </style>
 </resources>

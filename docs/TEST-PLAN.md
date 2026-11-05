@@ -35,49 +35,49 @@
 
 ## 二、T 系列：MFTR0 真机验收
 
-> 全部为 NOT RUN。2026-11-05 接管时 `adb devices` 为空，未执行任何设备端测试。
-> 源码重写后，下列每一项都必须在 OS3.0.106 上重新测，Aerial 在 OS3.0.101 的结论不能替代。
+> 2026-11-05 首轮真机：`MiTV-MFTR0` / `OS3.0.106.0.UFTMATV` / SDK 34 / armeabi-v7a，APK `2.0-p0`。
+> **实体遥控器才算数**；`adb shell input keyevent` 只作辅助观察，单独标注，不算通过。
 
-| ID | 测试 | 预期 | 状态 |
-|---|---|---|---|
-| T01 | 冷启动 | 进入 PIN 锁 | NOT RUN |
-| T02 | 待机 30 秒后唤醒 | 进入 PIN 锁 | NOT RUN |
-| T03 | 待机 10 分钟后唤醒 | 进入 PIN 锁 | NOT RUN |
-| T04 | 连续待机唤醒 20 次 | 每次锁定 | NOT RUN |
-| T05 | HOME | 未解锁不能绕过 | NOT RUN |
-| T06 | 返回键 | 未解锁不能绕过 | NOT RUN |
-| T07 | 最近任务 | 未解锁不能绕过 | NOT RUN |
-| T08 | 语音助手 | 未解锁不能绕过 | NOT RUN |
-| T09 | HDMI / 信号源 | 未解锁不能绕过或明确记录限制 | NOT RUN |
-| T10 | 系统设置 | 未解锁不能进入受保护设置 | NOT RUN |
-| T11 | 错误 PIN | 不解锁，退避计数生效 | NOT RUN |
-| T12 | 正确 PIN | 允许正常使用电视 | NOT RUN |
-| T13 | 解锁后再次待机 | 重新锁定 | NOT RUN |
-| T14 | 解锁后冷启动 | 重新锁定 | NOT RUN |
-| T15 | 强制停止 TV Lock | 保持 fail-closed 并可恢复 | NOT RUN |
-| T16 | ADB 断开后唤醒 | 仍保持锁定或记录已知限制 | NOT RUN |
-| T17 | Device Owner 注册 | 真实 owner 状态正确 | NOT RUN |
-| T18 | Lock Task HOME / Recents | 系统策略生效 | NOT RUN |
-| T19 | Kiosk 正常退出 | PIN 后恢复 PatchWall | NOT RUN |
-| T20 | 恢复演练 | R2/R3 可用；R4 仅作最后兜底 | NOT RUN |
+| ID | 测试 | 预期 | 状态 | 证据 |
+|---|---|---|---|---|
+| T01 | 冷启动 | 进入 PIN 锁 | NOT RUN | 未重启电视 |
+| T02 | 待机 30 秒后唤醒 | 进入 PIN 锁 | **PASS** | 用户用实体遥控器按电源键待机并唤醒，唤醒后要求输入 PIN。DiagLog：`process restart found UNLOCKED; re-locked` → `lock overlay attached` 0.39s → `screen on` +10.25s |
+| T03 | 待机 10 分钟后唤醒 | 进入 PIN 锁 | NOT RUN | 只测了短待机 |
+| T04 | 连续待机唤醒 20 次 | 每次锁定 | NOT RUN | — |
+| T05 | HOME | 未解锁不能绕过 | NOT RUN | ADB `KEYCODE_HOME` 后 `mCurrentFocus` 仍为锁窗口；**实体遥控器待验** |
+| T06 | 返回键 | 未解锁不能绕过 | NOT RUN | 同上（`KEYCODE_BACK`） |
+| T07 | 最近任务 | 未解锁不能绕过 | NOT RUN | 同上（`KEYCODE_APP_SWITCH`） |
+| T08 | 语音助手 | 未解锁不能绕过 | NOT RUN | 窗口栈 #1/#2 是小爱语音层，位于锁层之下；未实际呼叫 |
+| T09 | HDMI / 信号源 | 未解锁不能绕过或明确记录限制 | NOT RUN | — |
+| T10 | 系统设置 | 未解锁不能进入受保护设置 | NOT RUN | — |
+| T11 | 错误 PIN | 不解锁，退避计数生效 | NOT RUN | 单测覆盖退避曲线；真机只出现 1 次错误（`fails=1`）后正确解锁，未触发 30s 等待 |
+| T12 | 正确 PIN | 允许正常使用电视 | **PASS** | 输入 `2580` 后 `state=UNLOCKED`、`windowAttached=false`，电视恢复可用 |
+| T13 | 解锁后再次待机 | 重新锁定 | NOT RUN | — |
+| T14 | 解锁后冷启动 | 重新锁定 | NOT RUN | — |
+| T15 | 强制停止 TV Lock | 保持 fail-closed 并可恢复 | **PASS** | `am force-stop` 后 pid 4860→10598，**1 秒内**复活；状态仍 LOCKED；窗口 0.09s 重挂 |
+| T16 | ADB 断开后唤醒 | 仍保持锁定或记录已知限制 | NOT RUN | — |
+| T17 | Device Owner 注册 | 真实 owner 状态正确 | NOT RUN | `dumpsys device_policy`：`Device Owner Type: -1`，未注册 |
+| T18 | Lock Task HOME / Recents | 系统策略生效 | NOT RUN | 依赖 T17 |
+| T19 | Kiosk 正常退出 | PIN 后恢复 PatchWall | NOT RUN | 依赖 T17 |
+| T20 | 恢复演练 | R2/R3 可用；R4 仅作最后兜底 | NOT RUN | 仅 dry-run 验证过脚本行为（S09/S10） |
 
-### 2.1 P0 新增验收项（本轮代码引入，尚未上机）
+### 2.1 P0 新增验收项
 
-| ID | 测试 | 预期 | 状态 |
-|---|---|---|---|
-| T21 | 第三方应用发 `UNLOCK` Intent | 失败（组件未导出 / 无该 action） | NOT RUN |
-| T22 | 打开「电视锁」设置页（锁定状态） | 不显示任何动作按钮，不显示 PIN | NOT RUN |
-| T23 | 首次安装后的第一次解锁 | 要求设置 4 位密码并二次确认 | NOT RUN |
-| T24 | 连续输错 5 次 | 第 5 次起出现等待倒计时，重启电视后等待仍有效 | NOT RUN |
-| T25 | 解锁后 `am force-stop` 再拉起 | 回到 LOCKED，要求重新输入 PIN | NOT RUN |
-| T26 | 解锁后撤销通知监听授权 | 下次待机唤醒不再锁定（记录为缺陷，不是通过） | NOT RUN |
-| T27 | 修改密码流程 | 需先输当前密码，再输两次新密码 | NOT RUN |
-| T28 | 解锁耗时 | 从第 4 位按键到锁屏消失 ≤ 500ms | NOT RUN |
-| T29 | 待机时锁窗口是否保留 | 唤醒首帧即为锁屏，不出现 PatchWall | NOT RUN |
-| T30 | overlay 压 PatchWall 是否招致强停 | logcat 中无新增 `Force stopping com.toy.tvlock` | NOT RUN |
+| ID | 测试 | 预期 | 状态 | 证据 |
+|---|---|---|---|---|
+| T21 | 第三方应用发 `UNLOCK` Intent | 失败（组件未导出 / 无该 action） | **PASS** | 向 `LockService` 发送 → `Error: Not found; no service started`；向 `RevivalListener` 发送 → `Requires permission BIND_NOTIFICATION_LISTENER_SERVICE`；伪造广播被忽略 |
+| T22 | 打开「电视锁」设置页（锁定状态） | 不显示任何动作按钮，不显示 PIN | NOT RUN | 锁态下设置页在锁层之下，无法截图确认 |
+| T23 | 首次安装后的第一次解锁 | 要求设置 4 位密码并二次确认 | **PASS** | 首装后进入「第一次使用 / 设一个 4 位密码，需要输入两次」，此时 `pinSet=false`，无默认密码 |
+| T24 | 连续输错 5 次 | 第 5 次起出现等待倒计时，重启电视后等待仍有效 | NOT RUN | 未在真机上连续输错 |
+| T25 | 解锁后 `am force-stop` 再拉起 | 回到 LOCKED，要求重新输入 PIN | NOT RUN | 当前只测了锁定态下强停（T15） |
+| T26 | 解锁后撤销通知监听授权 | 下次待机唤醒不再锁定（记录为缺陷，不是通过） | NOT RUN | — |
+| T27 | 修改密码流程 | 需先输当前密码，再输两次新密码 | NOT RUN | — |
+| T28 | 解锁耗时 | 从第 4 位按键到锁屏消失 ≤ 500ms | NOT RUN | 日志显示同秒内完成，未精确计时 |
+| T29 | 待机时锁窗口是否保留 | 唤醒首帧即为锁屏，不出现 PatchWall | NOT RUN | 用户观察「灭屏唤醒会先上锁」，但未逐帧确认有无 PatchWall 露出 |
+| T30 | overlay 压 PatchWall 是否招致强停 | logcat 中无新增 `Force stopping com.toy.tvlock` | **PASS（本轮）** | 从安装到待机唤醒一轮结束，近 1000 行日志内 0 次 `Force stopping com.toy.tvlock`。不做长周期结论 |
 
-T29 / T30 是本架构的两个核心假设，必须最先测。若 T29 失败，说明「熄屏期间保窗」不成立，
-需要改走 AccessibilityService 宿主；若 T30 失败且频繁，说明 overlay 会被系统针对，需要重新评估。
+T29 / T30 是本架构的两个核心假设。T29 仍未逐帧验证，若失败说明「熄屏期间保窗」不成立，
+需要改走 AccessibilityService 宿主；T30 本轮未见异常，但需在多轮待机后复查。
 
 ## 三、R 系列：恢复演练
 

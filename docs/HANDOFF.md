@@ -39,14 +39,20 @@
 - **绕过通道已关闭**：无 `UNLOCK` action；`MainActivity` 不显示 PIN、无解锁按钮，锁定状态下不显示任何动作；权限面从 7 项收到 2 项。
 - 诊断：`DiagLog` 环缓冲 + `RevivalListener.dump()`，`dumpsys activity service com.toy.tvlock/.RevivalListener` 直接可读状态与时间线，不含任何 PIN 材料。
 - 恢复：`tools/tvlockctl.sh`（默认只读；写操作需 `--yes`，支持 `--dry-run`），见 `docs/RECOVERY.md`。
-- **本轮未上机**。`adb devices` 为空，T 系列全部 NOT RUN。构建与 42 项离机单测通过，但这只证明代码自洽，不证明电视上可用。
+- UI：手机锁屏式居中单列 + 玻璃面板 + drawable 合成的夜色背景，文案 `爸爸爱你们 / 不能偷看电视哟 / 萌萌达`。设计决策与 token 映射见 `design/tv-lock-screen/MANIFEST.md`。
+
+### 真机状态（2026-11-05 首轮，`10.0.0.231:5555`）
+
+- 已安装 `2.0-p0` 并在真机跑通：锁覆盖 PatchWall、按键/圆点、首次设置密码、正确 PIN 解锁、`am force-stop` 后 1 秒内复活并重新上锁、待机唤醒后要求 PIN（用户用实体遥控器完成）。
+- **仍未验证**：T29 逐帧（唤醒首帧有没有露出 PatchWall）、实体遥控器的 HOME / 返回 / 最近任务、连续输错退避、解锁后强停、冷启动。
 
 ### 已知未完成
 
-- T29（唤醒首帧是否为锁屏）与 T30（overlay 是否招致强停）是架构的两个核心假设，**尚未验证**。
-- `PinCrypto.ITERATIONS` 的自适应标定在电视上的实际解锁耗时尚无数据（目标 ≤220ms 派生 + 界面开销）。
+- T29（首帧）与多轮待机下的 T30 仍需观察。
+- `PinCrypto.ITERATIONS` 的自适应标定在电视上的实际耗时未计时（T28）。
 - Device Owner / Kiosk 未动，仍是可选加固层。
 - `MyDeviceAdminReceiver` 仍是空实现，保留供 P1-3 使用。
+- 背景只有 drawable 合成，没有真实插画（可选：图像生成补 2–3 张 1920×1080）。
 
 ## 关键架构判断（2026-11-05）
 
@@ -80,24 +86,23 @@
 
 ## 下一步（按此顺序）
 
-### 立即：P0-6 真机验证（需要用户批准待机测试）
+### 立即：补完真机验收（当前最重要）
 
-这是当前唯一能推动项目前进的事。代码已经改完，**但架构的两个核心假设还没被证实**：
-
-| 优先级 | 测什么 | 失败意味着什么 |
+| 优先级 | 测什么 | 为什么 |
 |---|---|---|
-| 1 | **T29**：待机时锁窗口是否保留，唤醒首帧是否为锁屏 | 若失败，改走 AccessibilityService 宿主 + `WRITE_SECURE_SETTINGS` 重绑 |
-| 2 | **T30**：overlay 压 PatchWall 是否招致 `Force stopping` | 若频繁触发，overlay 方案本身要重新评估 |
-| 3 | T02 / T03：短待机、长待机唤醒是否要求 PIN | 复活锚点在本机固件上不成立 |
-| 4 | T21 / T22 / T25：绕过与 fail-closed 是否真的关死 | 收紧没生效，需回查 |
-| 5 | T28：解锁耗时（KDF 自适应标定是否符合预期） | 下调 `PinCrypto.TARGET_UNLOCK_MS` |
+| 1 | **T29** 逐帧确认唤醒首帧是锁屏 | 这是「熄屏保窗」假设的唯一硬证据，失败要改道 AccessibilityService 宿主 |
+| 2 | **T05–T07** 实体遥控器按 HOME / 返回 / 最近任务 | `input keyevent` 不经过系统按键路径，不能替代 |
+| 3 | T04 连续 20 次待机唤醒 + 期间复查 `Force stopping` | T30 只跑了一轮，样本不足 |
+| 4 | T24 连续输错 5 次（第 5 次起 30s 倒计时、重启后仍有效） | 退避只在单测里验过 |
+| 5 | T25 解锁后强停 → 应回到 LOCKED | 当前只测了锁定态强停 |
+| 6 | T01 冷启动 | 需用户批准重启 |
 
-每一步都要采集：`./tools/tvlockctl.sh status`、`dumpsys activity service com.toy.tvlock/.RevivalListener`、必要时 `logcat -d -s tvlock`。
+采集方式：`./tools/tvlockctl.sh status` / `dump`，必要时 `logcat -d -s tvlock`。
 
 ### P1 — 达标级
 
 - P1-1 连续 20 次待机唤醒时序量化（T04）
-- P1-2 Device Owner **只读**可行性探测（`dumpsys device_policy`，不执行注册）
+- P1-2 Device Owner **只读**可行性探测（`dumpsys device_policy`，当前 `Device Owner Type: -1`，未注册）
 - P1-3 Kiosk 原型（仅在 P1-2 结论为正且用户批准后）
 - P1-4 旁路补测：语音助手、HDMI 信号源、系统设置、屏保（T08/T09/T10）
 
@@ -105,12 +110,21 @@
 
 - P2-1 构建卫生：把 `TVLOCK_KS_PASS` 真正用起来（当前只是支持，默认仍回落到历史口令）
 - P2-2 补状态机单测（`LockStateManager` 的迁移规则目前只有静态审查）
-- P2-3 锁屏 UI 打磨（错误提示、剩余次数已在，可再优化可读性）
-- P2-4 打包 `.dm`（speed-profile），降低首次解锁与启动开销（Aerial 记录该机型需 `install-multiple`）
+- P2-3 锁屏 UI：可选补真实插画背景（`res/drawable-nodpi/` + 随机轮换）
+- P2-4 打包 `.dm`（speed-profile），降低首次解锁与启动开销
 
 ## 最近工作记录
 
-### 2026-11-05 — P0 实现（未上机）
+### 2026-11-05 — 首轮真机 + UI 改版
+- 设备在 `10.0.0.231:5555`（昨天的 `192.168.1.100` 不在同一网段）。型号/固件确认：`MiTV-MFTR0` / `OS3.0.106.0.UFTMATV` / SDK 34 / armeabi-v7a。
+- 记录授权原值：`enabled_notification_listeners=null`、`enabled_accessibility_services=com.xiaomi.voicecontrol/...VoiceAccessibilityService`（未改动）、`disable_back_home_whitelist=null`（未改动）、无 Device Owner。
+- 安装 `2.0-p0` 并 `arm`（悬浮窗 + 通知监听）。
+- **通过**：T02（用户实体遥控器待机唤醒后要求 PIN）、T12、T15（强停 1 秒复活、重新上锁）、T21、T23、T30（本轮无强停）。
+- **未通过也未失败**：T05–T07（`input keyevent` 未夺走焦点，但规则要求实体遥控器）。
+- UI 改版：`res/values/colors.xml`、`res/drawable/{bg_lock,panel_lock,dot_on,dot_off,btn_bg}.xml`、`res/color/key_text.xml`、`res/layout/lock_overlay.xml`、`styles.xml`、`LockOverlay.java`（圆点改为 View + 背景切换，颜色改从资源取）。
+- Stitch 未能产出：`create_project` 报 MCP schema 不匹配；`list_projects` 输出超限且落盘文件不可读，复用判断未完成。已记录在 `design/tv-lock-screen/MANIFEST.md`。
+- 未重启电视、未改任何系统设置、未注册 Device Owner、未恢复出厂。
+
 - 代码重写：新增 `PinCrypto`、`BackoffPolicy`、`PinManager`、`LockStateManager`、`LockCoordinator`、`LockOverlay`、`RevivalListener`、`DiagLog`；重写 `BootReceiver`、`MainActivity`、`AndroidManifest.xml`、`build.sh`；删除 `LockService.java`、`AlarmReceiver.java`。
 - 权限从 7 项收到 2 项；`versionCode 2`，签名密钥未变（可覆盖升级）。
 - 新增 `test.sh` + `test/com/toy/tvlock/RunTests.java`（42 项离机测试全 PASS）、`tools/tvlockctl.sh`（默认只读，写操作 `--yes` + `--dry-run`）。
