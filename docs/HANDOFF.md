@@ -1,6 +1,7 @@
 # TV Lock — Agent 交接文档
 
 > 本文件是下一位 AI Agent 的第一份工作交接。每次完成有意义的代码、设备测试或架构变更后更新。
+> 用户下次开工的复制粘贴提示词见 [`RESUME-PROMPT.md`](RESUME-PROMPT.md)。
 
 ## 项目目标
 
