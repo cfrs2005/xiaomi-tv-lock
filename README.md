@@ -160,3 +160,24 @@ docs/
 ## License
 
 MIT
+
+
+## AI Agent 工作流
+
+本项目面向 AI Agent 协作开发和设备运维。Agent 接手任务时必须先阅读：
+
+1. [AGENTS.md](AGENTS.md) — Agent 全局规则、风险确认门和完成定义
+2. [docs/HANDOFF.md](docs/HANDOFF.md) — 当前项目状态和下一步
+3. [docs/DEVICE-MFTR0.md](docs/DEVICE-MFTR0.md) — 目标电视设备档案
+4. [docs/ARCHITECTURE-v2.md](docs/ARCHITECTURE-v2.md) — TV Lock 2.0 架构
+5. [docs/RECOVERY.md](docs/RECOVERY.md) — 分级恢复流程
+6. [docs/TEST-PLAN.md](docs/TEST-PLAN.md) — 真机验收标准
+
+任务执行手册位于 [agent/](agent/)：
+- [INSTALL](agent/install.md)
+- [DIAGNOSE](agent/diagnose.md)
+- [ADAPT](agent/adapt.md)
+- [RECOVERY](agent/recovery.md)
+- [ACCEPTANCE](agent/acceptance.md)
+
+**重要：** 这些文档是给 AI Agent 阅读并执行的工作指令，不是要求用户手工照做的教程。Agent 必须在有权限的电脑环境中亲自执行并核验真实结果；没有设备访问能力时必须明确说明。恢复出厂只允许作为最后的灾难恢复手段，绝不是正常部署步骤。
