@@ -35,6 +35,7 @@ echo ">>> 2/7 链接资源并生成 R.java"
   -I "$PLATFORM" \
   --manifest "$ROOT/AndroidManifest.xml" \
   --java "$B/obj" \
+  -A "$ROOT/assets" \
   --min-sdk-version "$MIN_SDK" \
   --target-sdk-version "$TARGET_SDK" \
   "$B/res.zip"

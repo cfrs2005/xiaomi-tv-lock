@@ -90,7 +90,7 @@ CREATE TABLE words (
     zh            TEXT NOT NULL,             -- 中文释义，多义用 ；
     pos           TEXT NOT NULL,             -- n. / v. / adj. / adv. / prep. / conj. / pron.
     level         INTEGER NOT NULL DEFAULT 1,-- 1 高频 / 2 常考 / 3 拓展
-    freq_rank     INTEGER,                   -- 词频序，越小越常用
+    sort_key      INTEGER,                   -- 固定打散顺序，避免每次从 A 开始
     enabled       INTEGER NOT NULL DEFAULT 1,-- 预留：单个词可停用
     seen_count    INTEGER NOT NULL DEFAULT 0,
     right_count   INTEGER NOT NULL DEFAULT 0,
@@ -136,7 +136,7 @@ ORDER BY
   seen_count ASC,                                   -- 没做过的优先
   COALESCE(last_seen_at, 0) ASC,                    -- 同次数里最久没见的先来
   level ASC,                                        -- 高频词优先
-  COALESCE(freq_rank, 999999) ASC
+  COALESCE(sort_key, 0) ASC
 LIMIT 10;
 ```
 
@@ -159,14 +159,14 @@ pass    = correct >= 7          // 严格 >60%
 ### 3.5 词库导入
 
 ```
-/assets/words_seed.csv          内置 300 条，首启建库时事务插入
+/assets/words_gaokao.csv         3796 条，首启建库时事务插入
 /sdcard/Download/tvlock_words.csv   家长手动导入，覆盖式合并（按 en 去重）
 ```
 
 CSV 格式（首行表头必须存在）：
 
 ```csv
-en,zh,pos,level,freq_rank
+en,zh,pos,level,sort_key
 well,很好地；水井,adv.,1,120
 environment,环境,n.,1,340
 ```
@@ -243,7 +243,7 @@ manifest 权限、`RevivalListener`、`BootReceiver`、构建脚本。这个特�
 
 | 指标 | 目标 | 依据 |
 |---|---|---|
-| 建库 + 300 条种子 | < 300ms | 单事务批量插入 |
+| 建库 + 3796 条种子 | < 800ms | 单事务批量插入，索引延后到插入后建 |
 | 导入 3500 条 | < 3s | 单事务 + 索引延后到导入后建 |
 | 单次选词查询 | < 10ms | `idx_words_due` 覆盖排序前两列 |
 | 学习页渲染 10 项 | < 50ms | 10 个 TextView |
@@ -280,7 +280,9 @@ MT9653 是 32 位 ARM，以上按台式机实测 ×4 估算仍有富余。真机
 
 ## 10. 遗留风险
 
-1. **词库数据质量**是本功能最大的风险，不是代码。3500 条中文释义与词性我无法凭空保证准确，必须有可信来源或人工抽查。错一个释义，孩子就记错一个词。
+1. **词库数据质量**是本功能最大的风险，不是代码。现有 3796 条来自公开 MIT 词表并做了归一化，
+   但上游本身有瑕疵（`assets/NOTICE.md` 列了三处已知问题）。**上线前必须人工抽查至少 50 条**，
+   尤其是高频词——错一个释义，孩子就记错一个词。
 2. **遥控器拼写体验**：字母砖块是折中方案。若孩子反馈仍然难按，退路是"选择题"模式（4 选 1），但那已经不是默写。
 3. **孩子可能背答案**：学习页停留时间不限，理论上可以拍照或死记 10 个词再默写。这是产品取向问题，不是缺陷——真要防，得改成"不预先展示、直接默写"。
 4. **15 分钟未必够看完一集动画**，中途上锁可能导致反复。可以考虑"到点提示，家长 PIN 可续 15 分钟"，暂未纳入。

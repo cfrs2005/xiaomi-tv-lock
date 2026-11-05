@@ -100,8 +100,17 @@
 不能做成 Activity —— `TYPE_APPLICATION_OVERLAY` 永远在 Activity 之上，为了显示 Activity 而
 撤掉锁层，就会出现一段可被 HOME 落进 PatchWall 的无保护窗口。
 
-三个待用户拍板的规则冲突已在产品文档 §7 列出（通过线 7/10 还是 5/10、错题是否当天重练、
-答错是否当场给答案）。
+三个规则冲突已由用户拍板（2026-11-05）：
+
+1. **通过线**：答对 ≥7 / 10 才解锁，≤6 再来一组（严格对齐「正确率 > 60%」）
+2. **错题**：严格 7 天冷却，当天不重练（保留 `wrong_retry_hours` 开关，默认关闭）
+3. **答错反馈**：当场显示正确答案，停 1.5 秒
+
+词库已就绪：`assets/words_gaokao.csv` 3796 条，由 `tools/build_wordbank.py` 从
+[pluto0x0/word3500](https://github.com/pluto0x0/word3500)（MIT）解析生成，转换规则与已知瑕疵见
+`assets/NOTICE.md`。`build.sh` 已加 `-A assets`，APK 593K。
+
+**尚未写任何代码。** 下一步从技术文档 §9 阶段 1（`WordDb` + 选词）开始，这一段可离机测试。
 
 ## 下一步（按此顺序）
 
