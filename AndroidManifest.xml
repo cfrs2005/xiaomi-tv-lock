@@ -1,24 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.toy.tvlock"
-    android:versionCode="1"
-    android:versionName="1.0">
+    android:versionCode="2"
+    android:versionName="2.0-p0">
 
-    <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34" />
+    <!--
+      minSdk 26: PinCrypto uses PBKDF2WithHmacSHA256 and LockStateManager uses device-protected
+      storage. The target device is Android 14 (SDK 34); there is no reason to carry a lower API.
+    -->
+    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34" />
 
+    <!-- Draws the lock window. Granted over ADB (appops) or by the system settings page. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- Re-arm LOCKED after a real power cycle. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <application
         android:label="电视锁"
         android:icon="@android:drawable/ic_lock_lock"
-        android:allowBackup="false">
+        android:allowBackup="false"
+        android:directBootAware="true">
 
+        <!-- Settings and self-check only. Its content is gated on being unlocked. -->
         <activity
             android:name=".MainActivity"
             android:label="电视锁"
@@ -30,15 +33,28 @@
             </intent-filter>
         </activity>
 
+        <!--
+          The revival anchor. Notification listeners are the one component the Xiaomi standby
+          force-stop does not permanently remove: the approval survives and system_server binds
+          the listener again after the process dies. Protected by BIND_NOTIFICATION_LISTENER_SERVICE,
+          so only the system can bind it.
+        -->
         <service
-            android:name=".LockService"
+            android:name=".RevivalListener"
+            android:label="电视锁"
             android:exported="true"
-            android:foregroundServiceType="specialUse">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="screen_lock_overlay" />
+            android:directBootAware="true"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
         </service>
 
+        <!--
+          Exported because the boot broadcasts are sent by the system. The receiver accepts only
+          BOOT_COMPLETED / LOCKED_BOOT_COMPLETED / MY_PACKAGE_REPLACED and ignores everything else,
+          so an explicit Intent from another app cannot make it do anything.
+        -->
         <receiver
             android:name=".BootReceiver"
             android:exported="true">
@@ -49,10 +65,11 @@
             </intent-filter>
         </receiver>
 
-        <receiver
-            android:name=".AlarmReceiver"
-            android:exported="false" />
-
+        <!--
+          Dormant. Present only so a future Device Owner / Kiosk experiment has a receiver to bind;
+          it currently implements no policy and is not a Device Owner. Protected by
+          BIND_DEVICE_ADMIN.
+        -->
         <receiver
             android:name=".MyDeviceAdminReceiver"
             android:permission="android.permission.BIND_DEVICE_ADMIN"

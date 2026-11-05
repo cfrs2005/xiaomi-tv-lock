@@ -24,26 +24,31 @@
 - 被 force-stop 后 AlarmManager、普通前台服务、WakeLock、Doze 白名单和 Device Admin 均未能解决。
 - 唤醒后 ADB 可能被小米关闭。
 
-## 仓库当前已知实现（以源码为准，2026-11-05 接管审查复核）
+## 当前实现（P0 已落地，2026-11-05，**未上机验证**）
 
-> 完整审查报告见 [`2026-11-05-takeover-review.md`](2026-11-05-takeover-review.md)。以下为结论摘要。
+> 审查结论见 [`2026-11-05-takeover-review.md`](2026-11-05-takeover-review.md)；
+> 测试状态见 [`TEST-PLAN.md`](TEST-PLAN.md)（S 系列 PASS，T 系列全部 NOT RUN）。
 
-- 包名：`com.toy.tvlock`；commit `95cb1d5`；`versionCode 1`。
-- Java 手工构建：`build.sh`。**本次实测构建通过**（退出码 0，产物 21K，签名 SHA-256 `ae59ce09…38e1651`）。
-- 核心：`LockService.java`（316 行），`TYPE_APPLICATION_OVERLAY` 全屏覆盖 + 4 位 PIN。
-- **待机路径生效率为 0**：进程被 force-stop 后 overlay 随窗口消失，唤醒后 PatchWall 直接可用。当前代码没有任何组件能在这条路径上存活。
-- **冷启动路径：代码已写、真机从未验证**（T01 NOT RUN）。`BootReceiver` 押在 `startForegroundService` 上，Android 14 下未测。
-- **三条仅用遥控器即可绕过的路径**（详见报告 §5）：
-  1. `MainActivity` 有 LAUNCHER 入口，界面上明文显示 PIN 且带「解除锁定」按钮（`:52-57`、`:109`）。
-  2. `LockService` `exported=true`，`onStartCommand` 接受外部 `UNLOCK`（`:283`）。
-  3. 默认 PIN `2025`，首启不强制设置。
-- PIN 明文存 SharedPreferences，无 salt / KDF / 失败退避（`ARCHITECTURE-v2.md §6` 的要求一条未落地）。
-- 状态不落盘：锁定状态 = 「overlay 对象是否为空」，服务一死即视为未锁 —— **与 fail-closed 相反**。
-- `MyDeviceAdminReceiver` 是 12 行空实现，不构成任何设备管理能力。
-- `AlarmReceiver` + 每 5 秒 AlarmManager 自检 + 无超时 `PARTIAL_WAKE_LOCK`：机制已证伪，只增加功耗。
-- 上述问题均为源码审查发现，**本轮未修改，均未修复**。
+- 包名 `com.toy.tvlock`，`versionCode 2` / `versionName 2.0-p0`，签名与历史 APK 相同（可覆盖升级）。
+- **架构已从「Service + overlay + 闹钟」换成「通知监听宿主 + 落盘状态机 + overlay」**：
+  - `RevivalListener`（NotificationListenerService，`directBootAware`，不读通知）是唯一常驻组件。
+  - 待机 `SCREEN_OFF` 时状态落盘为 LOCKED 并**保留窗口**；唤醒首帧即为锁屏，不再有「先看到 PatchWall」的窗口期（设计意图，待 T29 验证）。
+  - 删除 `LockService.java`、`AlarmReceiver.java`：前者是外部 `UNLOCK` 入口，后者机制已证伪。
+- **状态 fail-closed**：`LockStateManager` 存 device-protected storage，默认值 LOCKED；进程在「已解锁」状态下死亡，新进程启动时强制回到 LOCKED。
+- **PIN 无明文、无默认值**：PBKDF2（算法与迭代次数按设备实测自适应，存于记录中），salt 随机，首启强制设置；失败 4 次后 30/60/120/240s 退避，上限 300s，退避跨重启保留。
+- **绕过通道已关闭**：无 `UNLOCK` action；`MainActivity` 不显示 PIN、无解锁按钮，锁定状态下不显示任何动作；权限面从 7 项收到 2 项。
+- 诊断：`DiagLog` 环缓冲 + `RevivalListener.dump()`，`dumpsys activity service com.toy.tvlock/.RevivalListener` 直接可读状态与时间线，不含任何 PIN 材料。
+- 恢复：`tools/tvlockctl.sh`（默认只读；写操作需 `--yes`，支持 `--dry-run`），见 `docs/RECOVERY.md`。
+- **本轮未上机**。`adb devices` 为空，T 系列全部 NOT RUN。构建与 42 项离机单测通过，但这只证明代码自洽，不证明电视上可用。
 
-## 关键架构判断（2026-11-05 新增）
+### 已知未完成
+
+- T29（唤醒首帧是否为锁屏）与 T30（overlay 是否招致强停）是架构的两个核心假设，**尚未验证**。
+- `PinCrypto.ITERATIONS` 的自适应标定在电视上的实际解锁耗时尚无数据（目标 ≤220ms 派生 + 界面开销）。
+- Device Owner / Kiosk 未动，仍是可选加固层。
+- `MyDeviceAdminReceiver` 仍是空实现，保留供 P1-3 使用。
+
+## 关键架构判断（2026-11-05）
 
 - **Device Owner 不能解决待机问题。** 厂商 force-stop 不受 DO 约束；DO 只能补「进程活着时 HOME/最近任务被系统压住」这个洞。复活锚点才是硬依赖，DO 是可选加固层，两者不是二选一。
 - **必须做到「唤醒时锁已在屏上」**，而不是唤醒后再把锁盖上去。依据：Aerial 在同型号记录，屏幕亮起后约 4–5 秒才放开第三方进程，系统再花约 4–5 秒绑定服务，合计 4–10 秒 PatchWall 可见窗口。唯一可行路径是进程在待机期间存活，并在熄屏状态下把 overlay 挂好。
@@ -69,47 +74,55 @@
 
 - 当前分支 `main`，HEAD `95cb1d5`，与 `origin/main` 一致，工作区干净（仅 `.workbuddy/` 未跟踪）。
 - **PR #1 已 squash 合并进 main**（原文档「尚未合并」的说法已过期）。远端残留 `origin/docs/agent-first-workflow`，内容与 main 无差异，可删。
-- 无 CI（`.github/workflows` 不存在）、无单元测试、无 Gradle。
+- 无 CI（`.github/workflows` 不存在）、无 Gradle。离机测试用 `./test.sh`（纯 javac，42 项）。
 - 历史实验记录保留：`docs/2026-11-04-xiaomi-tv-lock-attempt.md`、`docs/2026-11-04-xiaomi-tv-lock-research.md`。
-- 测试矩阵 `docs/TEST-PLAN.md`：T01–T20 **全部 NOT RUN**，无一条 PASS。README 中「已实现」的表述指的是代码存在，不代表真机验证。
+- 测试矩阵 `docs/TEST-PLAN.md`：S01–S10 PASS，T01–T30 / R01–R04 全部 NOT RUN。
 
-## 下一步建议（P0 / P1 / P2，2026-11-05 重排）
+## 下一步（按此顺序）
 
-顺序不可颠倒：**P0-5 恢复通道必须先于 P0-1 落地**，否则收紧权限后一旦出错就无法解锁。
+### 立即：P0-6 真机验证（需要用户批准待机测试）
 
-### P0 — 阻断级
+这是当前唯一能推动项目前进的事。代码已经改完，**但架构的两个核心假设还没被证实**：
 
-| ID | 任务 | 文件 |
+| 优先级 | 测什么 | 失败意味着什么 |
 |---|---|---|
-| P0-1 | 关闭外部绕过：`LockService` 改 `exported=false`、删除外部 `UNLOCK` 分支、`MainActivity` 移除解锁按钮与 PIN 显示 | `AndroidManifest.xml`、`LockService.java`、`MainActivity.java` |
-| P0-2 | PIN 安全化：PBKDF2-HMAC-SHA256 + 随机 salt，移除默认 PIN，首启强制设置，失败计数与退避持久化 | 新增 `PinManager.java` |
-| P0-3 | 状态机落盘：LOCKED / UNLOCKED / RECOVERY_REQUIRED 存 device-protected storage，overlay 由状态推导 | 新增 `LockStateManager.java` |
-| P0-4 | 复活锚点：`RevivalListener`（NotificationListenerService，directBootAware，不读通知内容）作为常驻宿主；删除 AlarmManager、WakeLock、FGS 依赖 | 新增 `RevivalListener.java`，停用 `AlarmReceiver.java` |
-| P0-5 | 恢复通道 R0/R1 先落地并演练（独立管理员凭证，不用隐藏按键） | `docs/RECOVERY.md`、恢复脚本 |
-| P0-6 | 真机验证复活与时序（需用户批准待机测试） | 无代码，产出测量记录 |
+| 1 | **T29**：待机时锁窗口是否保留，唤醒首帧是否为锁屏 | 若失败，改走 AccessibilityService 宿主 + `WRITE_SECURE_SETTINGS` 重绑 |
+| 2 | **T30**：overlay 压 PatchWall 是否招致 `Force stopping` | 若频繁触发，overlay 方案本身要重新评估 |
+| 3 | T02 / T03：短待机、长待机唤醒是否要求 PIN | 复活锚点在本机固件上不成立 |
+| 4 | T21 / T22 / T25：绕过与 fail-closed 是否真的关死 | 收紧没生效，需回查 |
+| 5 | T28：解锁耗时（KDF 自适应标定是否符合预期） | 下调 `PinCrypto.TARGET_UNLOCK_MS` |
+
+每一步都要采集：`./tools/tvlockctl.sh status`、`dumpsys activity service com.toy.tvlock/.RevivalListener`、必要时 `logcat -d -s tvlock`。
 
 ### P1 — 达标级
 
 - P1-1 连续 20 次待机唤醒时序量化（T04）
-- P1-2 Device Owner **只读**可行性探测（不执行注册）
+- P1-2 Device Owner **只读**可行性探测（`dumpsys device_policy`，不执行注册）
 - P1-3 Kiosk 原型（仅在 P1-2 结论为正且用户批准后）
-- P1-4 诊断能力：`DiagLog` + 覆写 `dump()`，让 `dumpsys` 可读状态（电视上取 logcat 困难）
-- P1-5 旁路补测：语音助手、HDMI 信号源、系统设置、屏保
+- P1-4 旁路补测：语音助手、HDMI 信号源、系统设置、屏保（T08/T09/T10）
 
 ### P2 — 工程化
 
-- P2-1 构建卫生：keystore 口令移出 `build.sh`（当前硬编码 `tvlock123`）、Java 8 语言级别、构建后清单断言
-- P2-2 纯逻辑单测（PIN / 状态机抽成无 Android 依赖类，不引入 Gradle）
-- P2-3 锁屏 UI 打磨
-- P2-4 `README.md` 区分「代码存在」与「真机验证」
+- P2-1 构建卫生：把 `TVLOCK_KS_PASS` 真正用起来（当前只是支持，默认仍回落到历史口令）
+- P2-2 补状态机单测（`LockStateManager` 的迁移规则目前只有静态审查）
+- P2-3 锁屏 UI 打磨（错误提示、剩余次数已在，可再优化可读性）
+- P2-4 打包 `.dm`（speed-profile），降低首次解锁与启动开销（Aerial 记录该机型需 `install-multiple`）
 
 ## 最近工作记录
+
+### 2026-11-05 — P0 实现（未上机）
+- 代码重写：新增 `PinCrypto`、`BackoffPolicy`、`PinManager`、`LockStateManager`、`LockCoordinator`、`LockOverlay`、`RevivalListener`、`DiagLog`；重写 `BootReceiver`、`MainActivity`、`AndroidManifest.xml`、`build.sh`；删除 `LockService.java`、`AlarmReceiver.java`。
+- 权限从 7 项收到 2 项；`versionCode 2`，签名密钥未变（可覆盖升级）。
+- 新增 `test.sh` + `test/com/toy/tvlock/RunTests.java`（42 项离机测试全 PASS）、`tools/tvlockctl.sh`（默认只读，写操作 `--yes` + `--dry-run`）。
+- 文档：`docs/RECOVERY.md` 重写为可执行恢复流程；`docs/TEST-PLAN.md` 拆成 S/T/R 三类并补 T21–T30；本文件更新。
+- **未连接电视，未上机验证任何一项 T 测试。**
 
 ### 2026-11-05 — 项目接管审查（只读）
 - 读取：`AGENTS.md`、`README.md`、`CLAUDE.md`、`docs/` 全部 7 份、`agent/` 全部 5 份、5 个 Java 源文件、Manifest、`build.sh`、`res/`。
 - 读取 Aerial 源码：`RevivalListener.kt`、`GuardSetup.kt`、`RevivalSync.kt`、`BootReceiver.kt`、`UsageFront.kt`、`HomeGuardService.kt`(2327 行)、Aerial `AndroidManifest.xml`、`site/agent.md`、`site/adapt.md`、`AGENTS.md`、设备笔记 `xiaomi-mitv-mftr0.md`。
-- 实测：`git log/branch`、`adb devices`（**空，无电视连接**）、`./build.sh`（**通过**，产物 21K，签名 SHA-256 `ae59ce09…`）、`aapt2 dump badging/xmltree`。
+- 实测：`git log/branch`、`adb devices`（**空，无电视连接**）、`./build.sh`（**通过**，签名 SHA-256 `ae59ce09…`）、`aapt2 dump badging/xmltree`。
 - 产出：`docs/2026-11-05-takeover-review.md`；本文件重构为可交接状态。
 - 修正：PR #1 已合并（原文写「尚未合并」）；测试矩阵全 NOT RUN（原文「已实现」易误读）。
 - **未修改任何代码；未连接电视；未重启、未待机测试、未改系统设置、未注册/移除 Device Owner、未停用 PatchWall、未恢复出厂。**
+
 
