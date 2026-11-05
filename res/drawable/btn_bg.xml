@@ -1,17 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  按键两态。遥控器操作时焦点必须一眼可见，所以焦点态是「整块暖色填充 + 深色字」，
+  而不是只加一圈描边 —— 后者在 3 米外看不出来。
+-->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_focused="true">
         <shape android:shape="rectangle">
-            <solid android:color="#2196F3" />
-            <corners android:radius="10dp" />
-            <stroke android:width="2dp" android:color="#FFFFFF" />
+            <corners android:radius="16dp" />
+            <solid android:color="@color/key_focus_fill" />
+            <stroke
+                android:width="2dp"
+                android:color="@color/key_focus_stroke" />
+        </shape>
+    </item>
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <corners android:radius="16dp" />
+            <solid android:color="@color/key_focus_fill" />
+            <stroke
+                android:width="2dp"
+                android:color="@color/key_focus_stroke" />
         </shape>
     </item>
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#2B2B2B" />
-            <corners android:radius="10dp" />
-            <stroke android:width="1dp" android:color="#555555" />
+            <corners android:radius="16dp" />
+            <solid android:color="@color/key_fill" />
+            <stroke
+                android:width="1dp"
+                android:color="@color/key_stroke" />
         </shape>
     </item>
 </selector>

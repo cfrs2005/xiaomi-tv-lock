@@ -22,8 +22,8 @@
 - 规则：BOOT、SCREEN_OFF / 进入待机事件、检测到重启均使状态进入 LOCKED。仅内部已验证授权路径可变为 UNLOCKED。
 
 ### UI
-- `LockActivity`：PIN 输入、错误提示、恢复状态提示。
-- `LockService`：只负责生命周期协调或兼容层，不提供公开 UNLOCK action。
+- `LockOverlay`：PIN 输入、首次设置、修改密码三个流程共用一套键盘窗口。
+- 锁定窗口不提供公开 UNLOCK action，也不通过 Intent 控制；开关只由状态推导。
 - 锁屏 UI 不应是唯一的安全控制；若 Kiosk 未生效，产品状态必须标为兼容模式而非“整机不可绕过”。
 
 ### Device policy
@@ -94,3 +94,28 @@ Device Owner 不自动保证应用免疫厂商 force-stop，也不自动解决�
 本项目目标是阻止普通电视遥控器用户绕过。它不承诺抵御拥有 ADB 授权、设备管理权限、物理恢复模式、刷机能力或系统漏洞的攻击者。
 
 任何未通过实体遥控器真机测试的限制都不得标记为强制生效。
+
+## 8. 落地映射（2026-11-05，代码已实现，真机未验证）
+
+| 设计组件 | 实现 | 状态 |
+|---|---|---|
+| Access state | `LockStateManager`（device-protected，默认 LOCKED） | 代码完成 |
+| AuthSession | 无独立对象；`changeInProgress` + 状态迁移表达 | 简化实现 |
+| PinManager | `PinManager` + `PinCrypto`（PBKDF2，迭代自适应 60k–250k） | 代码完成，42 项离机测试 PASS |
+| Lock UI | `LockOverlay`（解锁 / 首次设置 / 修改密码） | 代码完成，未上机 |
+| 不提供公开 UNLOCK | 删除 `LockService`；无该 action；组件均不导出解锁能力 | 代码完成 |
+| Device policy | `MyDeviceAdminReceiver` 占位，无 DO 逻辑 | 未开始 |
+| BootReceiver | 校验 action + `goAsync()` 工作线程 + 置 LOCKED | 代码完成，未上机 |
+| WakeObserver | 屏幕广播 + `PowerManager.isInteractive` 双判据 | 代码完成，未上机 |
+| RevivalListener | `RevivalListener`（NotificationListener，directBootAware） | 代码完成，未上机 |
+| RecoveryCoordinator | `LockCoordinator` 的有界重试 + `RECOVERY_REQUIRED` 状态 | 代码完成，未上机 |
+| UsageStats | 未使用（轮询不是安全边界，且 Aerial 实测有 100–250ms 延迟） | 不实现 |
+| XiaomiAdapter | 未实现；当前无需写任何小米设置项 | 待 P1-2 决定 |
+
+两个尚未被证实的假设（决定架构是否成立）：
+
+1. 熄屏期间保留的 `TYPE_APPLICATION_OVERLAY` 窗口能否存活到唤醒，使首帧即为锁屏（T29）。
+2. 该窗口压在 PatchWall 上是否会反过来招致 `Force stopping`（T30，Aerial 记录过同类现象）。
+
+若第 1 条不成立，备选是 AccessibilityService 宿主 + `WRITE_SECURE_SETTINGS` 重绑；代价是
+系统会在强停后永久移除无障碍授权，需要每次复活都写回，且 Aerial 实测按键过滤会破坏音量连发。
