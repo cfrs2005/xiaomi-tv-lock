@@ -71,3 +71,6 @@
 - 读取 Aerial 的 `AGENTS.md`、`site/agent.md`、`site/adapt.md`、MFTR0 设备笔记，以及 RevivalListener / GuardSetup / BootReceiver / UsageFront 关键源码。
 - 发现当前 LockService 的外部 UNLOCK action、MainActivity 直接解锁、明文 PIN 等风险。
 - 未修改 APK；未连接电视；未进行 Device Owner 注册或恢复出厂。
+
+- 后续补充：增加 `CLAUDE.md`、`.github/copilot-instructions.md`、`.agents/skills/tv-lock-ops/SKILL.md`、`.claude/skills/tv-lock-ops/SKILL.md`，让 Codex/通用 AGENTS 入口、Claude Code 和 GitHub Copilot 能发现项目工作规范与任务流程。
+- 已创建 Draft PR：https://github.com/cfrs2005/xiaomi-tv-lock/pull/1（目标 main；尚未合并）。
