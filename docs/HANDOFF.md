@@ -88,6 +88,21 @@
 - 历史实验记录保留：`docs/2026-11-04-xiaomi-tv-lock-attempt.md`、`docs/2026-11-04-xiaomi-tv-lock-research.md`。
 - 测试矩阵 `docs/TEST-PLAN.md`：S01–S10 PASS，T01–T30 / R01–R04 全部 NOT RUN。
 
+## 待实现的新特性：背单词解锁（2026-11-05 已出方案，未动代码）
+
+需求来自用户：锁屏增加「我不知道密码 → 背单词」路径，一组 10 个词，默写通过可看 15 分钟电视；
+15 分钟后自动上锁；做过的词 7 天内不再出现；词库按高考 3500 准备。
+
+- 产品方案：[`2026-11-05-word-unlock-design.md`](2026-11-05-word-unlock-design.md)
+- 技术方案：[`2026-11-05-word-unlock-tech.md`](2026-11-05-word-unlock-tech.md)
+
+**关键架构约束（读方案前必须先知道）**：背单词的所有页面必须活在现有 overlay 窗口内部，
+不能做成 Activity —— `TYPE_APPLICATION_OVERLAY` 永远在 Activity 之上，为了显示 Activity 而
+撤掉锁层，就会出现一段可被 HOME 落进 PatchWall 的无保护窗口。
+
+三个待用户拍板的规则冲突已在产品文档 §7 列出（通过线 7/10 还是 5/10、错题是否当天重练、
+答错是否当场给答案）。
+
 ## 下一步（按此顺序）
 
 ### 立即：补完真机验收（当前最重要）
