@@ -42,7 +42,7 @@
 - 恢复：`tools/tvlockctl.sh`（默认只读；写操作需 `--yes`，支持 `--dry-run`），见 `docs/RECOVERY.md`。
 - UI：手机锁屏式居中单列 + 玻璃面板 + drawable 合成的夜色背景，文案 `爸爸爱你们 / 不能偷看电视哟 / 萌萌达`。设计决策与 token 映射见 `design/tv-lock-screen/MANIFEST.md`。
 
-### 真机状态（2026-11-05 首轮，`10.0.0.231:5555`）
+### 真机状态（2026-11-05 首轮）
 
 - 已安装 `2.0-p0`（含插画背景）并在真机跑通，**已 PASS**：T02 待机唤醒要求 PIN、T05 HOME、
   T06 返回、T07 最近任务（后三项由用户用实体遥控器确认）、T11 错误 PIN 退避（连续 5 次，
@@ -144,7 +144,7 @@
 ## 最近工作记录
 
 ### 2026-11-05 — 首轮真机 + UI 改版
-- 设备在 `10.0.0.231:5555`（昨天的 `192.168.1.100` 不在同一网段）。型号/固件确认：`MiTV-MFTR0` / `OS3.0.106.0.UFTMATV` / SDK 34 / armeabi-v7a。
+- 设备地址不写入仓库，运行时由用户提供。型号/固件确认：`MiTV-MFTR0` / `OS3.0.106.0.UFTMATV` / SDK 34 / armeabi-v7a。
 - 记录授权原值：`enabled_notification_listeners=null`、`enabled_accessibility_services=com.xiaomi.voicecontrol/...VoiceAccessibilityService`（未改动）、`disable_back_home_whitelist=null`（未改动）、无 Device Owner。
 - 安装 `2.0-p0` 并 `arm`（悬浮窗 + 通知监听）。
 - **通过**：T02（用户实体遥控器待机唤醒后要求 PIN）、T12、T15（强停 1 秒复活、重新上锁）、T21、T23、T30（本轮无强停）。

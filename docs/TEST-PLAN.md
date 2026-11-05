@@ -51,7 +51,7 @@
 | T09 | HDMI / 信号源 | 未解锁不能绕过或明确记录限制 | NOT RUN | — |
 | T10 | 系统设置 | 未解锁不能进入受保护设置 | NOT RUN | — |
 | T11 | 错误 PIN | 不解锁，退避计数生效 | **PASS** | 连续 5 次错误：`+42.35s`/`44.37`/`45.75`/`46.62` 各计 1 次，第 5 次 `+47.68s` 起等待 30s；`+80.38s` 输入正确 PIN 解锁 |
-| T12 | 正确 PIN | 允许正常使用电视 | **PASS** | 输入 `2580` 后 `state=UNLOCKED`、`windowAttached=false`，电视恢复可用 |
+| T12 | 正确 PIN | 允许正常使用电视 | **PASS** | 输入正确 PIN 后 `state=UNLOCKED`、`windowAttached=false`，电视恢复可用 |
 | T13 | 解锁后再次待机 | 重新锁定 | NOT RUN | — |
 | T14 | 解锁后冷启动 | 重新锁定 | NOT RUN | — |
 | T15 | 强制停止 TV Lock | 保持 fail-closed 并可恢复 | **PASS** | `am force-stop` 后 pid 4860→10598，**1 秒内**复活；状态仍 LOCKED；窗口 0.09s 重挂 |

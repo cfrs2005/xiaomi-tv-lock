@@ -31,7 +31,7 @@
 ## B. 上机补完验收（需要电视和你在场）
 
 ```
-继续 xiaomi-tv-lock 项目，电视在 10.0.0.231:5555，ADB 已开。
+继续 xiaomi-tv-lock 项目，电视在局域网里，ADB 已开，具体地址我问你。
 
 先读 docs/HANDOFF.md 和 docs/TEST-PLAN.md。
 
@@ -49,7 +49,7 @@ T29 唤醒首帧逐帧确认 → T04 连续 20 次待机唤醒 → T25 解锁后
 ## C. 继续做 UI（阶段 3–4，要在电视上看效果）
 
 ```
-继续 xiaomi-tv-lock 项目，电视在 10.0.0.231:5555，ADB 已开。
+继续 xiaomi-tv-lock 项目，电视在局域网里，ADB 已开，具体地址我问你。
 
 先读 docs/HANDOFF.md、docs/2026-11-05-word-unlock-design.md（§4 界面部分）
 和 docs/2026-11-05-word-unlock-tech.md（§1 架构约束）。
