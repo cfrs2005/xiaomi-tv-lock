@@ -20,7 +20,7 @@
 
 | ID | 测试 | 命令 | 预期 | 状态 | 证据 |
 |---|---|---|---|---|---|
-| S01 | 构建通过 | `./build.sh` | 退出码 0，产出 APK | PASS | 2026-11-05，33K，签名 SHA-256 `ae59ce09…38e1651` |
+| S01 | 构建通过 | `./build.sh` | 退出码 0，产出 APK | PASS | 2026-11-05，525K（含 3 张背景图），签名 SHA-256 `ae59ce09…38e1651` |
 | S02 | 签名密钥未变 | `apksigner verify --print-certs` | 与历史 APK 同一证书 | PASS | 同一 SHA-256，可覆盖升级 |
 | S03 | 清单无遗留绕过组件 | `build.sh` 内断言 | 无 `LockService` / `AlarmReceiver` | PASS | 断言通过 |
 | S04 | 通知监听受系统权限保护 | `aapt2 dump xmltree` | `BIND_NOTIFICATION_LISTENER_SERVICE` + `directBootAware=true` | PASS | 2026-11-05 清单转储 |

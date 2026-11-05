@@ -6,8 +6,11 @@
     <color name="bg_bottom">#241A22</color>
 
     <!-- 玻璃面板 -->
-    <color name="panel_fill">#590C1220</color>
+    <color name="panel_fill">#E00A1018</color>
     <color name="panel_stroke">#26FFFFFF</color>
+
+    <!-- 全屏压暗层：压在插画上，保证文字对比度与色彩统一 -->
+    <color name="scrim">#330A1020</color>
 
     <!-- 文案 -->
     <color name="text_hero">#FFF7F0</color>

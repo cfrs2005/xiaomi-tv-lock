@@ -12,6 +12,16 @@
     android:layout_height="match_parent"
     android:background="@drawable/bg_lock">
 
+    <!--
+      统一压暗层。背景可能是插画也可能只是渐变，亮度差别很大；这一层保证无论抽到哪张，
+      白字都有对比度。不处理触摸/焦点，纯视觉。
+    -->
+    <View
+        android:id="@+id/scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/scrim" />
+
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

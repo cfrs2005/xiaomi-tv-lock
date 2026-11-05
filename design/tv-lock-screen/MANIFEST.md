@@ -19,7 +19,7 @@
 | Stitch（`mcp__stitch__*`） | **未产出**。`create_project` 返回 `MCP error -32602: Structured content does not match the tool's output schema: data/origin must be equal to one of the allowed values`，属 MCP 客户端与服务端 schema 版本不一致，与服务无关。未重试，避免产生半成品项目。 |
 | 复用判断 | **未能完成**。`list_projects` 返回约 148 KB，超出工具输出上限，落盘文件在工作区外无法读取。不去猜项目 ID，按要求新建而非改动他人项目。 |
 | 最终实现 | 直接在仓库内按 Android XML 落版，配色进 `res/values/colors.xml`，背景为 drawable 合成 |
-| 真机验证 | 截图 `lock-screen-1080p.png`，MiTV-MFTR0 / OS3.0.106.0.UFTMATV，1920×1080 |
+| 真机验证 | 截图 `lock-screen-shiba.jpg` / `lock-screen-bear.jpg`，MiTV-MFTR0 / OS3.0.106.0.UFTMATV，1920×1080 |
 
 ## 版式
 
@@ -64,11 +64,32 @@
 3. **行高压缩到 470dp 以内**：1080p / 320dpi 下可用高度 540dp。第一版排到 538dp，卡片顶满上下边缘，
    背景被吃掉；收到 ~470dp 后上下各留 ~35dp，卡片才「浮」起来。
 4. **不带 `FLAG_KEEP_SCREEN_ON`**：锁定期间电视必须能自己进待机，否则整夜常亮、烧屏。
-5. **背景用 drawable 合成，不引位图**：APK 体积不变，任何分辨率都不糊。
-   代价是只有抽象光晕，没有真实插画 —— 见下。
+5. **v2.0 先用 drawable 合成背景，v2.1 才换成插画**：合成版零体积、任何分辨率不糊，但只有抽象光晕。
+   插画版每张 158–168 KB，换来孩子看得懂的画面；`bg_lock.xml` 仍保留为无图兜底。
+
+## 背景插画（v2.1）
+
+三张 16:9 夜景插画，锁屏每次随机轮换，连续两次不重复。
+
+| # | 画面 | 资源 |
+|---|---|---|
+| 1 | 屋顶看星星：小熊 + 白兔，满月，左下暖窗光 | `res/drawable-nodpi/lock_bg_1.jpg` |
+| 2 | 客厅守夜：戴睡帽的柴犬抱着遥控器，旁边睡着白狗 | `res/drawable-nodpi/lock_bg_2.jpg` |
+| 3 | 雪夜窗边：小北极狐 + 热可可，窗外落雪 | `res/drawable-nodpi/lock_bg_3.jpg` |
+
+处理流程：生成 1920×1072 → 裁 `1792×1008`（左上对齐，切掉右下角水印）→ 放大到 1920×1080 → JPEG q86，158–168 KB/张。
+APK 因此从 33 KB 增到 525 KB。
+
+**原始带水印的 PNG 未入库**（5.9 MB 且带水印），入库的是裁好的 JPEG。
+
+配套改动：
+- 新增全屏压暗层 `@color/scrim`（`#330A1020`），保证任何一张图上白字都有对比度。
+- 面板从 35% 提到 88% 不透明（`panel_fill` `#E00A1018`）：第一版 88% 之前能透出角色轮廓，
+  兔子的头正好压在「4」键后面，看着像脏了。现在面板是实心卡片，插画当画框。
+- `LockOverlay` 里 `BACKGROUNDS` + 静态 `lastBackground` 负责轮换；XML 的 `bg_lock` 作为无图时的兜底。
 
 ## 未完成
 
-- 没有真实插画背景。若要给孩子更「萌」的画面，需要用图像生成补 2–3 张 1920×1080 背景图
-  （每张约 5–10 credits），再以 `res/drawable-nodpi/` 引入并加一轮随机轮换。
 - 未做深浅两套主题；当前只有一套夜间配色。
+- 未按时间段换图（例如白天用亮一点的版本）。
+

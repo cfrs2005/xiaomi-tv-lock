@@ -45,6 +45,15 @@ final class LockOverlay {
         void onCancelRequested();
     }
 
+    private static final int[] BACKGROUNDS = {
+            R.drawable.lock_bg_1,
+            R.drawable.lock_bg_2,
+            R.drawable.lock_bg_3
+    };
+    private static final java.util.Random RANDOM = new java.util.Random();
+    /** Static: consecutive lock sessions must not show the same picture twice. */
+    private static int lastBackground = -1;
+
     private final Context context;
     private final Listener listener;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -94,6 +103,10 @@ final class LockOverlay {
         if (windowManager == null) throw new IllegalStateException("no WindowManager");
 
         root = LayoutInflater.from(context).inflate(R.layout.lock_overlay, null);
+        // One picture per lock session; the XML default stays as the fallback.
+        if (BACKGROUNDS.length > 0) {
+            root.setBackgroundResource(pickBackground());
+        }
         if (root instanceof LockRootLayout) {
             ((LockRootLayout) root).setBackHandler(new LockRootLayout.BackHandler() {
                 @Override
@@ -173,6 +186,18 @@ final class LockOverlay {
         attached = true;
         resetInput();
         applyModeText();
+    }
+
+    /** A different picture each time the lock comes up, never the same one twice in a row. */
+    private int pickBackground() {
+        if (BACKGROUNDS.length == 1) return BACKGROUNDS[0];
+        int pick;
+        do {
+            pick = RANDOM.nextInt(BACKGROUNDS.length);
+        } while (pick == lastBackground);
+        lastBackground = pick;
+        DiagLog.i("background #" + (pick + 1));
+        return BACKGROUNDS[pick];
     }
 
     void hide() {
